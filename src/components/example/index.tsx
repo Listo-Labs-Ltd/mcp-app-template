@@ -29,10 +29,13 @@ function App() {
   const toolOutput = useOpenAiGlobal("toolOutput");
   const isLoading = toolOutput == null;
 
+  // Loading state
+  // IMPORTANT: LoadingIndicator does NOT have a label prop - use separate text element
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <LoadingIndicator label="Loading..." />
+      <div className="flex flex-col items-center justify-center gap-2 p-8">
+        <LoadingIndicator size={24} />
+        <span className="text-sm text-secondary">Loading...</span>
       </div>
     );
   }
