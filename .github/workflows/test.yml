@@ -16,8 +16,7 @@ jobs:
           node-version: '20'
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # version is read from package.json packageManager field
 
       - name: Install root dependencies
         run: pnpm install --ignore-workspace
@@ -35,18 +34,16 @@ jobs:
         run: cd server && npx tsc --noEmit
 
       - name: MCP Integration Test
-        env:
-          MCP_TEST_PORT: 8765
         run: |
           cd server
           # Start server in background
           npx tsx src/server.ts &
           SERVER_PID=$!
 
-          # Wait for server to be ready
-          echo "Waiting for MCP server to start..."
+          # Wait for server to be ready (default port 8000)
+          echo "Waiting for MCP server to start on port 8000..."
           for i in {1..30}; do
-            if curl -sf http://localhost:8765/health > /dev/null 2>&1; then
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
               echo "Server is ready!"
               break
             fi
@@ -60,7 +57,7 @@ jobs:
 
           # Test health endpoint
           echo "Testing health endpoint..."
-          curl -f http://localhost:8765/health
+          curl -f http://localhost:8000/health
 
           # Cleanup
           kill $SERVER_PID 2>/dev/null || true
