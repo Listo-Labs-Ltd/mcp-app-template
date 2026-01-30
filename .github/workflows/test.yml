@@ -1,0 +1,67 @@
+name: MCP Build Tests
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install root dependencies
+        run: pnpm install --ignore-workspace
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Build widgets
+        run: pnpm build
+
+      - name: Install server dependencies
+        run: cd server && pnpm install --ignore-workspace
+
+      - name: Server TypeScript check
+        run: cd server && npx tsc --noEmit
+
+      - name: MCP Integration Test
+        env:
+          MCP_TEST_PORT: 8765
+        run: |
+          cd server
+          # Start server in background
+          npx tsx src/server.ts &
+          SERVER_PID=$!
+
+          # Wait for server to be ready
+          echo "Waiting for MCP server to start..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:8765/health > /dev/null 2>&1; then
+              echo "Server is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Server failed to start within 30 seconds"
+              kill $SERVER_PID 2>/dev/null || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          # Test health endpoint
+          echo "Testing health endpoint..."
+          curl -f http://localhost:8765/health
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          echo "MCP integration test passed!"
